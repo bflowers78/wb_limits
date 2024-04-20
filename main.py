@@ -2,20 +2,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-from bs4 import BeautifulSoup
 from config.config import TOKEN_BOT
 from params import params
 import telebot
 import time
 import json
 ####################################
-import threading
 
-import requests
-import lxml
-import urllib
-from PIL import Image
-from io import BytesIO
 '''
 1 Выбираем склад
 2 Тип поставки (коробки, палеты, суперсейф)
@@ -38,7 +31,6 @@ class Seance:
         self.driver.get('https://seller.wildberries.ru/')
         time.sleep(1)
         self.get_element(params['start_authorization']).click()
-        #self.driver.find_element(By.XPATH, "//span[@class='Text--sQ5H2 Text--size-m--NIoHX Text--color-White--csIrI']").click()
         self.driver.find_element(By.TAG_NAME, "input").send_keys("9650626812")
         self.driver.find_element(By.CLASS_NAME, 'FormPhoneInputBorderless__image--qsIVS').click()
         self.send_captcha_screenshot()
@@ -51,44 +43,27 @@ class Seance:
 
     def send_captcha_screenshot(self):
         captcha = self.get_element(params['load_captcha'])
-        # captcha = WebDriverWait(self.driver, 10).until(
-        #             EC.presence_of_element_located((By.XPATH, "//img[@class='CaptchaFormContentView__captcha--8FDAG']")))
         captcha.screenshot('captcha_screenshot.png')
         captcha_answer = bot.send_photo(self.MY_ID, open('captcha_screenshot.png', "rb"))
-        while True:
-            time.sleep(1)  # Пауза между проверками ответа
-            if hasattr(captcha_answer, 'text'):
-                bot.register_next_step_handler(captcha_answer, self.send_captcha_answer)
-                break
+        bot.register_next_step_handler(captcha_answer, self.send_captcha_answer)
 
     def send_captcha_answer(self, captcha_answer):
         self.get_element(params['input_captcha']).send_keys(captcha_answer.text)
-        # WebDriverWait(self.driver, 10).until(
-        #             EC.presence_of_element_located((By.XPATH, "//input[@class='SimpleInput--9m9Pp SimpleInput--color-RichGreyNew--4z4Nb SimpleInput--centered--ZmsXW']"))).send_keys(captcha_answer.text) # input_captcha
         self.get_element(params['button_captcha']).click()
-        # WebDriverWait(self.driver, 10).until(
-        #             EC.presence_of_element_located((By.XPATH, "//span[@class='Text--sQ5H2 Text--size-xl--N+UTw Text--color-SuperDuperLightGrey--ENlxM']"))).click() # button_captcha
         try:
             time.sleep(2)
             self.get_element(params['button_captcha'])
-            # WebDriverWait(self.driver, 10).until(
-            #         EC.presence_of_element_located((By.XPATH, "//span[@class='Text--sQ5H2 Text--size-xl--N+UTw Text--color-SuperDuperLightGrey--ENlxM']"))) # button_captcha
             self.send_captcha_screenshot()
         except:
             self.get_sms_code()
 
     def get_sms_code(self):
         sms_code = bot.send_message(self.MY_ID, 'Captcha введена верно, отправте код из СМС')
-        while True:
-            time.sleep(1)  # Пауза между проверками ответа
-            if hasattr(sms_code, 'text'):
-                bot.register_next_step_handler(sms_code, self.send_sms_code)
-                break
+        bot.register_next_step_handler(sms_code, self.send_sms_code)
 
     def send_sms_code(self, sms_code):
-        nums =sms_code.text
+        nums = sms_code.text
         cells = self.get_element(params['input_sms_code'], alone=False)
-        #cells = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, "//input[@class='InputCell--7FpiE']")))
         if len(nums) != 6: pass  # ошибка
         for cell, num in zip(cells, nums):
             cell.send_keys(num)
@@ -101,19 +76,11 @@ class Seance:
         self.parsing()
 
     def create_dict_limits(self):
-        # html = self.driver.page_source
-        # print(html)
         cargos = ['Короба', 'Монопаллеты', 'Суперсейф', 'QR-поставка с коробами']
         warehouses = [x.text for x in self.driver.find_elements(By.XPATH, params['warehouses'])]
-        # cells_3 = [WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, "//div[@class='Limits-table__table-body__kR9Q+dx9Dm']")))]
-        # cells_2 = [x.find_elements(By.CLASS_NAME, 'Limits-table__table-row__F01IcFLtBl') for x in cells_3]
-        # cells = [x.find_elements(By.TAG_NAME, 'span') for x in cells_2]
         cells = [[a.find_elements(By.TAG_NAME, 'span') for a in b.find_elements(By.CLASS_NAME, 'Limits-table__table-row__F01IcFLtBl')] for b in self.driver.find_elements(By.XPATH, "//div[@class='Limits-table__table-body__kR9Q+dx9Dm']")]
         dates = [x.text for x in self.driver.find_elements(By.XPATH, params['dates'])][2:]
-        # soup = BeautifulSoup(html, 'lxml')
-        # warehouses = [x.text for x in soup.find_all('div', class_='Limits-table__warehouse-item__9EKMBScgVB')]
-        # cells = [[a.find('span').text for a in b.find_all('div', class_='Limits-table__table-row__F01IcFLtBl')] for b in soup.find_all('div', class_='Limits-table__table-body__kR9Q+dx9Dm')]
-        # dates = [x.text for x in soup.find_all('span', class_='Text__jKJsQramuu Text--h5-bold__FFXh7Nn6bh Text--black__hIzfx5PELf')][2:]
+
         # Формирование словаря
         data = {}
         for i, date in enumerate(dates):
@@ -124,7 +91,6 @@ class Seance:
                     data[date][wh][cargo] = cell[i].text
         print(data)
         return data
-
 
     def parsing(self):
         while True:
@@ -172,22 +138,6 @@ def rotor_changes(changes):
     for date, wh, cargo, value in changes:
         if wh in wh_interest and cargo == 'Короба':
             bot.send_message(Seance.MY_ID, f'Произошли изменения: {date} / {wh} / {value}')
-
-# with open('wb_coef.html', encoding='utf-8') as file:
-#    soup = BeautifulSoup(file, 'lxml')
-#    warehouses = [x.text for x in soup.find_all('div', class_='Limits-table__warehouse-item__9EKMBScgVB')]
-#    cells = [[a.find('span').text for a in b.find_all('div', class_='Limits-table__table-row__F01IcFLtBl')] for b in soup.find_all('div', class_='Limits-table__table-body__kR9Q+dx9Dm')]
-#    dates = [x.text for x in soup.find_all('span', class_='Text__jKJsQramuu Text--h5-bold__FFXh7Nn6bh Text--black__hIzfx5PELf')][2:]
-
-
-# Определите функцию, которая будет запускать бота
-# def start_bot():
-#     bot.infinity_polling()
-#
-#
-# # Запустите бота в отдельном потоке
-# bot_thread = threading.Thread(target=start_bot)
-# bot_thread.start()
 
 
 if __name__ == '__main__':
