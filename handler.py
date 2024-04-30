@@ -1,5 +1,6 @@
 from config.config import TOKEN_BOT, MY_ID
 from params import warehouses, warehouses_split, cargos, interested_time, limit_values
+from db.sql import SQL
 from telebot import types
 import telebot
 
@@ -31,23 +32,34 @@ class User_api:
         {
             'buttons': keyboard_generation(limit_values),
             'message': '''Выберите тип приёмки, на который будем искать слот
-            При выборе платной приемки бот будет искать указанный коэффициент или ниже
-            Например: Выбрано "До x2" - бот ищет: бесплатную, x1 и x2 приемки'''
+            При выборе платной приемки бот будет искать указанный коэффициент или ниже\n
+            Например:\n Выбрано "До x2" - бот ищет: бесплатную, x1 и x2 приемки'''
         },
     ]
 
     def __init__(self, user_id):
         self.id = user_id
         self.__wh_iter = 0
-        self.step = 0
+        self.__step = 0
         self.data = {
+            'user_id': user_id,
             'warehouse': None,
             'cargo': None,
             'time': None,
             'limit_values': None,
         }
         User_api.users[user_id] = self
-        self.show_warehouses()
+        self.send_request()
+    @property
+    def step(self):
+        return self.__step
+
+    @step.setter
+    def step(self, index):
+        if index > 3:
+            self.__step = 0
+        else:
+            self.__step = index
 
     @property
     def wh_iter(self):
@@ -61,7 +73,7 @@ class User_api:
             self.__wh_iter = index
 
     def send_request(self):
-        markup = self.wh_keyboard_generation() if self.step == 0 else self.STEPS[self.step]
+        markup = self.wh_keyboard_generation() if self.step == 0 else self.STEPS[self.step]['buttons']
         bot.send_message(self.id, self.STEPS[self.step]['message'], reply_markup=markup)
 
     def wh_keyboard_generation(self):
@@ -76,10 +88,14 @@ class User_api:
                        types.InlineKeyboardButton('Далее', callback_data='next'))
         return markup
 
-    def check_and_write(self):
+    def check_and_write(self, call):
         """Проверка полученных данных и запись в SQL таблицу"""
         if all(value for value in self.data.values()):
-            pass
+            SQL.add_user_request(tuple(self.data.values()))
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+            bot.send_message(self.id, 'Данные успешно записаны. Ведется поиск...')
+            User_api.users.pop(self.id)
+            return True
 
     @staticmethod
     def keyboard_generation(data_list):
@@ -89,21 +105,31 @@ class User_api:
             markup.add(types.InlineKeyboardButton(data, callback_data=data))
         return markup
 
+    def next_step(self, call):
+        """Проверка комплектности данных проводник между запросами"""
+        print('next step')
+        if self.check_and_write(call): return
+        self.step += 1
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        self.send_request()
+
 
 @bot.callback_query_handler(func=lambda call: call.data == 'next')
 def next_wh(call):
+    """Переход к следующемму набору складов"""
     bot.delete_message(call.message.chat.id, call.message.message_id)
     user_obj = User_api.users[call.message.chat.id]
     user_obj.wh_iter += 1
-    user_obj.show_warehouses()
+    user_obj.send_request()
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'back')
 def back_wh(call):
+    """Возврат к предидущему набору складов"""
     bot.delete_message(call.message.chat.id, call.message.message_id)
     user_obj = User_api.users[call.message.chat.id]
     user_obj.wh_iter -= 1
-    user_obj.show_warehouses()
+    user_obj.send_request()
 
 
 @bot.callback_query_handler(func=lambda call: call.data)
@@ -112,9 +138,9 @@ def calldata_handler(call):
     user_obj = User_api.users[call.message.chat.id]
     type_data = data_is(call.data)
 
-    if type_data: user_obj.wh_iter[type_data] = call.data
-    if user_obj.check_and_write(): return
-    user_obj.next_step()
+    if type_data:
+        user_obj.data[type_data] = call.data
+        user_obj.next_step(call)
 
 
 def data_is(call_data):
