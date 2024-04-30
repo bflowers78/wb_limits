@@ -2,6 +2,7 @@ from config.config import TOKEN_BOT, MY_ID
 from params import warehouses, warehouses_split, cargos, interested_time, limit_values
 from db.sql import SQL
 from telebot import types
+from main import initial_check
 import telebot
 
 bot = telebot.TeleBot(TOKEN_BOT)
@@ -95,6 +96,7 @@ class User_api:
             bot.delete_message(call.message.chat.id, call.message.message_id)
             bot.send_message(self.id, 'Данные успешно записаны. Ведется поиск...')
             User_api.users.pop(self.id)
+            initial_check(self.data)
             return True
 
     @staticmethod
@@ -107,7 +109,6 @@ class User_api:
 
     def next_step(self, call):
         """Проверка комплектности данных проводник между запросами"""
-        print('next step')
         if self.check_and_write(call): return
         self.step += 1
         bot.delete_message(call.message.chat.id, call.message.message_id)
