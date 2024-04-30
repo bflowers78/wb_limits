@@ -1,4 +1,5 @@
-captcha_screenshot.png
-venv/
 config/
+venv/
+captcha_screenshot.png
+.idea/
 data.json
