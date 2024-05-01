@@ -144,12 +144,15 @@ def back_wh(call):
 @bot.callback_query_handler(func=lambda call: call.data)
 def calldata_handler(call):
     """Прием входящих каллбэков и сохранение данных под нужным ключом"""
-    type_data = data_is(call.data)
+    try:
+        type_data = data_is(call.data)
 
-    if type_data:
-        user_obj = User_api.users[call.message.chat.id]
-        user_obj.data[type_data] = call.data
-        user_obj.next_step(call)
+        if type_data:
+            user_obj = User_api.users[call.message.chat.id]
+            user_obj.data[type_data] = call.data
+            user_obj.next_step(call)
+    except KeyError:
+        bot.send_message(call.message.chat.id, 'Главное меню', reply_markup=main_menu())
 
 
 def data_is(call_data):

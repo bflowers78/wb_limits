@@ -1,6 +1,9 @@
 import psycopg2
 from config.config import host, user, password, db_name
+from config.config import TOKEN_LOGS
+import telebot
 
+bot_log = telebot.TeleBot(TOKEN_LOGS)
 
 class SQL:
     @staticmethod
@@ -48,7 +51,7 @@ class SQL:
                 if fetch:
                     return cursor.fetchall()
         except Exception as _ex:
-            print("[INFO] Error while working with PostgreSQL", _ex)
+            bot_log.send_message(382052667, "[INFO] Error while working with PostgreSQL", _ex)
         finally:
             if connection:
                 connection.close()

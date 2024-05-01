@@ -96,11 +96,13 @@ class Seance:
     def parsing(self):
         try:
             while True:
-                seance.driver.get('https://seller.wildberries.ru/supplies-management/warehouses-limits')
+                self.driver.get('https://seller.wildberries.ru/supplies-management/warehouses-limits')
                 time.sleep(5)
-                changes = check_changes(seance.create_dict_limits())
+                changes = check_changes(self.create_dict_limits())
                 if changes: rotor_changes(changes)
-                time.sleep(60)
+                print('sleep')
+                time.sleep(30)
+            print('Вышел погулять')
         except:
             pass
 
@@ -124,6 +126,7 @@ def check_changes(data_new):
     data_old = get_data()
     if not data_new:
         bot_log.send_message(MY_ID, 'Бот вернул пустой словарь')
+        Seance()
         return
     if data_new == data_old:
         print('Без изменений')
@@ -140,6 +143,7 @@ def check_changes(data_new):
                             bot_log.send_message(MY_ID, f'Ключ {e.args[0]} отсутствует в старом словаре')
                             time.sleep(1)
         save_data(data_new)
+        print(changes)
         return changes
 
 
@@ -150,8 +154,7 @@ def get_week_dates() -> list:
 def rotor_changes(changes: list):
     """Итерация по изменениям отправка интересующих их данных пользователям"""
     user_dates = SQL.get_requests()
-    print('user_dates',user_dates)
-    print('changes', changes)
+    print('user_dates', user_dates)
     for date, wh, cargo, value in changes:
         # Итератор по пользователям
         for user_id, u_wh, u_cargo, u_date, u_value in user_dates:
@@ -160,16 +163,15 @@ def rotor_changes(changes: list):
                 if date_comparsion(date, u_date) and value_comparsion(value, u_value):
                     bot.send_message(user_id, f'''Найден новый слот:\n Дата: {date}\n Склад: {wh}\n Груз: {cargo}\n Значение: {value}''')
                     time.sleep(2)
+    print('rotor_end')
 
 
 def date_comparsion(date: str, u_date: str) -> bool:
     """Сравнение значений дат"""
-    print(date, u_date, transform_date(datetime.today().strftime('%d.%m')))
-    if u_date == 'сегодня' and date == transform_date(datetime.today().strftime('%d.%m')):
-        print("True")
+    print(date, u_date, transform_date(datetime.today().strftime('%#d.%#m')))
+    if u_date == 'сегодня' and date == transform_date(datetime.today().strftime('%#d.%#m')):
         return True
-    elif u_date == 'завтра' and date == transform_date((datetime.today() + timedelta(days=1)).strftime('%d.%m')):
-        print('Завтра')
+    elif u_date == 'завтра' and date == transform_date((datetime.today() + timedelta(days=1)).strftime('%#d.%#m')):
         return True
     elif u_date == 'неделя' and date in get_week_dates():
         return True
@@ -184,7 +186,7 @@ def value_comparsion(value: str, u_value: str) -> bool:
         return False
     elif value == 'Бесплатно':
         return True
-    elif int(value[-1]) <= int(u_value[-1]):
+    elif u_value != 'Бесплатно' and int(value[-1]) <= int(u_value[-1]):
         return True
     return False
 
@@ -199,7 +201,7 @@ def validate_dates(u_date: str) -> list:
 
 
 def initial_check(user_data: dict):
-    """Начальная проверка введенных данных"""
+    """Первичная проверка наличия слотов из имеющихся данных"""
     date_validate = validate_dates(user_data['time'])
     print(date_validate)
     warehouse = user_data['warehouse']
@@ -225,6 +227,6 @@ def transform_date(date):
 
 
 if __name__ == '__main__':
-    seance = Seance()
+    Seance()
     bot_log.infinity_polling()
 
