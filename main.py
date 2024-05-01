@@ -149,7 +149,7 @@ def get_week_dates() -> list:
 
 def rotor_changes(changes: list):
     """Итерация по изменениям отправка интересующих их данных пользователям"""
-    user_dates = SQL.get_user_requests()
+    user_dates = SQL.get_requests()
     print('user_dates',user_dates)
     print('changes', changes)
     for date, wh, cargo, value in changes:
@@ -189,7 +189,7 @@ def value_comparsion(value: str, u_value: str) -> bool:
     return False
 
 
-def validate_dates(u_date: str)-> list:
+def validate_dates(u_date: str) -> list:
     week_dates = get_week_dates()
     valid_dates = []
     for date in week_dates:
@@ -199,7 +199,7 @@ def validate_dates(u_date: str)-> list:
 
 
 def initial_check(user_data: dict):
-    "Начальная проверка введенных данных"
+    """Начальная проверка введенных данных"""
     date_validate = validate_dates(user_data['time'])
     print(date_validate)
     warehouse = user_data['warehouse']

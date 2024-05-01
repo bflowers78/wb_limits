@@ -4,18 +4,31 @@ from config.config import host, user, password, db_name
 
 class SQL:
     @staticmethod
-    def get_user_requests() -> list:
-        query = """
-            SELECT *
-            FROM user_requests"""
-        return SQL.send_request(query, fetch=True)
-
+    def check_limit(user_id: int) -> bool:
+        """Проверка на ограничение в 11 записей"""
+        if len(SQL.get_requests(user_id)) > 11:
+            return False
+        return True
 
     @staticmethod
-    def add_user_request(data: tuple):
+    def get_requests(user_id=None) -> list:
+        where = f'WHERE user_id = {user_id}' if user_id else ''
         query = f"""
-            INSERT INTO user_requests
+            SELECT *
+            FROM user_requests
+            {where}"""
+        return SQL.send_request(query, fetch=True)
+
+    @staticmethod
+    def add_request(data: tuple):
+        query = f"""
+            INSERT INTO user_requests (user_id, warehouse, cargo, time_interested, value_interested)
             VALUES {data};"""
+        SQL.send_request(query)
+
+    @staticmethod
+    def del_request(request_id: str):
+        query = f"""DELETE FROM user_requests WHERE id = {request_id}"""
         SQL.send_request(query)
 
     @staticmethod
