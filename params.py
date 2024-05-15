@@ -8,10 +8,10 @@ params = {
     'warehouses'            : "//div[@class='Limits-table__warehouse-item__9EKMBScgVB']",
     'wh_cargos'             : "//div[@class='Limits-table__table-body__kR9Q+dx9Dm']",
     'dates'                 : "//span[@class='Text__jKJsQramuu Text--h5-bold__FFXh7Nn6bh Text--black__hIzfx5PELf']",
-    'cells'                 : "//div[@class='Coefficient-block__coefficient-text']",
+    'cells'                 : "//div[@class='Coefficient-table-cell__EqV0w0Bye8']",#"//div[@class='Table-cell-item__ZCLGoPuD+I']",
 }
 cargos = ['Короба', 'Монопаллеты', 'Суперсейф', 'QR-поставка с коробами']
-interested_time = ['сегодня', 'завтра', 'неделя', 'искать пока не найдется'] # Ввести дату добавлю позже
+interested_time = ['сегодня', 'завтра', 'неделя', 'искать пока не найдется']  # Ввести дату добавлю позже
 limit_values = ['Бесплатно', '< x1', '< x2', '< x3', '< x4']
 warehouses = [
     "Алматы Атакент", "Астана", "Белые Столбы", "Внуково СГТ", "Волгоград", "Вёшки", "Екатеринбург - Испытателей 14г", "Екатеринбург - Перспективный 12/2", "Казань", "Коледино",

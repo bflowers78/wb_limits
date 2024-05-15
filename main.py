@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from config.config import TOKEN_LOGS, MY_ID, TOKEN_BOT
+from keyboards import del_requests
 from params import params, cargos
 from db.sql import SQL
 from datetime import datetime, timedelta
@@ -80,9 +81,17 @@ class Seance:
     def create_dict_limits(self):
         """Парсинг страницы с лимитами и формирование словаря с данными"""
         warehouses = [x.text for x in self.driver.find_elements(By.XPATH, params['warehouses'])]
-        cells = [[a.find_elements(By.XPATH, params['cells']) for a in b.find_elements(By.CLASS_NAME, 'Limits-table__table-row__F01IcFLtBl')] for b in self.driver.find_elements(By.XPATH, "//div[@class='Limits-table__table-body__kR9Q+dx9Dm']")]
+        wh_blocks = self.driver.find_elements(By.XPATH, "//div[@class='Limits-table__table-body__kR9Q+dx9Dm']")
+        cargo_blocks = [x.find_elements(By.CLASS_NAME, 'Limits-table__table-row__F01IcFLtBl') for x in wh_blocks]
+        cells = []
+        for wh in cargo_blocks:
+            row = []
+            for cg in wh:
+                date_cells = list_adjustment([x.text for x in cg.find_elements(By.TAG_NAME, 'span')])
+                # Не удалось нормально спарсить ячейки дат х1 разбивает на два элемента, данная функция их склеивает
+                row.append(date_cells)
+            cells.append(row)
         dates = [x.text for x in self.driver.find_elements(By.XPATH, params['dates'])][2:]
-
         # Формирование словаря
         data = {}
         for i, date in enumerate(dates):
@@ -90,7 +99,8 @@ class Seance:
             for wh, wh_cells in zip(warehouses, cells):
                 data[date][wh] = {}
                 for cargo, cell in zip(cargos, wh_cells):
-                    data[date][wh][cargo] = cell[i].text
+                    data[date][wh][cargo] = cell[i]
+
         return data
 
     def parsing(self):
@@ -100,11 +110,21 @@ class Seance:
                 time.sleep(5)
                 changes = check_changes(self.create_dict_limits())
                 if changes: rotor_changes(changes)
-                print('sleep')
                 time.sleep(30)
-            print('Вышел погулять')
-        except:
+        except Exception as er:
             pass
+
+
+def list_adjustment(lst):
+    """Корректировка полученного списка
+        некорректно парсятся коэфициенты, данная функция устраняет этот недостаток"""
+    if len(lst) == 8:
+        return lst
+    validate_lst = []
+    for cell in lst:
+       if cell != '✕' and not cell.isdigit():
+           validate_lst.append(cell)
+    return validate_lst
 
 
 def save_data(data):
@@ -117,7 +137,7 @@ def get_data():
         return json.load(file)
 
 
-def check_changes(data_new):
+def check_changes(data_new: dict):
     """Функция проверяет два словаря, находит изменения в новом
         и возвращает список с изменениями в формате:
          [key, key, key, value]"""
@@ -157,11 +177,13 @@ def rotor_changes(changes: list):
     print('user_dates', user_dates)
     for date, wh, cargo, value in changes:
         # Итератор по пользователям
-        for user_id, u_wh, u_cargo, u_date, u_value in user_dates:
+        for request_id, user_id, u_wh, u_cargo, u_date, u_value in user_dates:
             if wh == u_wh and cargo == u_cargo:
                 # Сверка дат и сверка значений, нужно добавить новые функции
                 if date_comparsion(date, u_date) and value_comparsion(value, u_value):
-                    bot.send_message(user_id, f'''Найден новый слот:\n Дата: {date}\n Склад: {wh}\n Груз: {cargo}\n Значение: {value}''')
+                    bot.send_message(user_id,
+                                     f'''Найден новый слот:\n Дата: {date}\n Склад: {wh}\n Груз: {cargo}\n Значение: {value}'''
+                                     ,reply_markup=del_requests(request_id))
                     time.sleep(2)
     print('rotor_end')
 
@@ -219,7 +241,6 @@ def initial_check(user_data: dict):
 
 
 def transform_date(date):
-
     months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
               'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
     day, month = date.split('.')

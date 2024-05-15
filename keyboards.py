@@ -48,3 +48,10 @@ def show_requests(requests: list) -> types:
                    types.InlineKeyboardButton('❌', callback_data=f'del.{requests_id}'))
     markup.add(types.InlineKeyboardButton('Назад', callback_data='main'))
     return markup
+
+
+def del_requests(request_id: int) -> types:
+    """Возвращает все запросы пользователя в виде инлайн кнопок"""
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton('Удалить запрос ❌', callback_data=f'del.{request_id}'))
+    return markup
