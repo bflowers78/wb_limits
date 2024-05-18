@@ -8,12 +8,14 @@ from params import params, cargos
 from db.sql import SQL
 from datetime import datetime, timedelta
 import telebot
+from loguru import logger
 import time
 import json
+
 bot_log = telebot.TeleBot(TOKEN_LOGS)
 bot = telebot.TeleBot(TOKEN_BOT)
 wh_interest = ['Коледино', 'Электросталь', 'Тула', 'СЦ Внуково']
-
+logger.add("errors/error.log", format='{time}{message}', level='ERROR', rotation='2 day')
 
 class Seance:
     OPTIONS_CHROME = webdriver.ChromeOptions()
@@ -112,7 +114,7 @@ class Seance:
                 if changes: rotor_changes(changes)
                 time.sleep(30)
         except Exception as er:
-            pass
+            logger.error(f'При парсинге возникла ошибка: {er}')
 
 
 def list_adjustment(lst):
